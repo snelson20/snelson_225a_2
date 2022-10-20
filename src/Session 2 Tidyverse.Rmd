@@ -1,0 +1,61 @@
+---
+title: "Workshop 2 tidyverse 10-6-22"
+author: Sophia Nelson
+output: html_notebook
+---
+
+Ctrl+Alt+i to insert new code chunk
+To run single line, hold Ctrl+enter
+To run whole chunk, Ctrl+Shift+enter
+```{r libraries}
+library(tidyverse)
+```
+quote and tab to get path, use ../ to go one up in the file
+use brackets to subset
+```{r read in weather data}
+read.csv('../raw_data/sf_weather.csv')
+sf_weather <- read.csv('../raw_data/sf_weather.csv')
+head(sf_weather)
+
+unique(sf_weather$SNOW)
+unique(sf_weather$DATE[sf_weather$SNOW == '0.8'])
+```
+```{r selecting one year of data}
+sf_weather_2021 <- sf_weather %>%
+  select(c(DATE, TMAX, TMIN)) %>%
+  separate(DATE, c("YEAR","MONTH","DAY"), sep = '-', remove = FALSE) %>%
+  filter(YEAR == '2021')
+```
+
+```{r adding average data}
+max_temp_month_2021 <- sf_weather_2021 %>%
+  mutate('TAVG' = (TMAX+TMIN)/2) %>%
+  group_by(MONTH) %>%
+  summarise('MAX_MONTH_TEMP' = max(TAVG))
+```
+NOTE: delete things from environment with rm function
+
+```{r plotting the 2021 data}
+plot(max_temp_month_2021)
+```
+
+```{r weather function}
+yearly_subsetter <- function(year)
+  sf_weather %>%
+  select(c(DATE, TMAX, TMIN)) %>%
+  separate(DATE, c("YEAR","MONTH","DAY"), sep = '-', remove = FALSE) %>%
+  filter(YEAR == year) %>%
+  mutate('TAVG' = (TMAX+TMIN)/2) %>%
+  group_by(MONTH) %>%
+  summarise('MAX_MONTH_TEMP' = max(TAVG))
+```
+
+```{r testing our function}
+plot(yearly_subsetter('1950'))
+```
+
+```{r for loop for many years}
+for(single_year in c('1930', '1931', '1937')) {plot(yearly_subsetter(single_year), main = single_year)}
+```
+
+

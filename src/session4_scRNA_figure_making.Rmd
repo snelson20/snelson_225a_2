@@ -1,0 +1,192 @@
+---
+title: "Naive T cell scRNA-seq import and analysis"
+authors: "Dan Bunis, Rebecca Jaszczak"
+date: "10/10/2022"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Installing one more package helpful for plotting figures.
+
+```{r one more install, include=FALSE}
+install.packages('gridExtra')
+```
+
+# Read in libraries and set notebook defaults.
+
+```{r setup & libraries, include=FALSE}
+#set some Rmd defaults
+knitr::opts_chunk$set(echo = TRUE, fig.height = 6, fig.width = 7, warning = F)
+
+#load in libraries
+library(dittoSeq)
+library(tidyverse)
+library(Seurat)
+library(ggplot2)
+```
+
+# Catching up on PCA, Neighbors Cal, Clustering, and UMAP, and saving
+
+## Re-initialize Tcells data after our 'save point' from last session.
+
+```{r read back in}
+Tcells <- readRDS("../processed_data/Tcells_analyzed.rds")
+```
+
+Rebecca forgot to have us save the processed object after doing PCA, Find Neighbors, and FindClusters - oops! Let's rerun the code and do that now.
+
+I wanted to spend just a few minutes on PC analysis, since we discussed it a bit in the previous two lectures, but maybe didn't cover it as thoroughly as I should have.
+
+Next we perform Principle Component Analysis (PCA) on the scaled data. You can chose to run this on the 2000 Highly Variable Genes, or on all genes. `DimHeatmap()` allows for easy exploration of the primary sources of heterogeneity in a dataset, and can be useful when trying to decide which PCs to include for further downstream analyses.     
+
+To overcome the extensive technical noise in any single feature for scRNA-seq data, Seurat clusters cells based on their PCA scores, with each PC essentially representing a ‘metafeature’ that combines information across a correlated feature (gene) set. The top principal components therefore represent a robust compression of the dataset. 
+
+More info on PCA: https://hbctraining.github.io/scRNA-seq/lessons/05_normalization_and_PCA.html
+
+
+```{r re-run PCA/clustering/umap}
+Tcells <- RunPCA(
+  object = Tcells,
+  verbose = FALSE,
+  npcs = 12)
+
+pca_dims = 1:9
+
+Tcells <- FindNeighbors(object = Tcells,
+                        reduction = "pca",
+                        k.param = 20,
+                        dims = pca_dims)
+
+Tcells <- FindClusters(object = Tcells,
+                       modularity.fxn = 1,
+                       algorithm = 1,
+                       resolution = c(0.1,0.2))
+Tcells <- RunUMAP(
+  object = Tcells,
+  reduction = "pca",
+  dims = pca_dims,
+  seed.use = 1)
+```
+
+```{r plot UMAP}
+#Colored with CD4s lighter and CD8s darker 
+dittoDimPlot(object = Tcells, 
+             var =  "Tage",
+             size = 1.5,
+             reduction.use = "umap",
+             colors = c(1:3,9:11),
+             main = "T cells Lineage and Stage")
+
+dittoDimPlot(object = Tcells, 
+             var =  "RNA_snn_res.0.1",
+             size = 1.5,
+             reduction.use = "umap")
+
+dittoDimPlot(object = Tcells, 
+             var =  "RNA_snn_res.0.2",
+             size = 1.5,
+             reduction.use = "umap")
+```
+
+```{r save!}
+# saveRDS(Tcells, "../processed_data/Tcells_analyzed.rds")
+```
+
+
+# Let's make the top of Figure 3!
+
+```{r main umap, fig.height=3, fig.width=4}
+
+
+
+# legend = dittoSeq:::.grab_legend(
+#   dittoDimPlot(Tcells, "Tage", reduction.use = 'umap',
+#                color.panel = dittoColors()[c(1:3,9:11)])
+#   )
+
+```
+
+# Let's code up the cell highlight umaps.
+## variables for highlight loop
+
+```{r make some variables for cell highlight function}
+#unique identities?
+
+
+
+#colors corresponding with unique identities?
+
+
+```
+
+## set up highlight umap function + loop
+```{r plot cell highlights, fig.height=3, fig.width=4}
+
+# How can we turn this plot into a function?
+dittoDimPlot(Tcells, "Tage", size = 0.5, reduction.use = "umap",
+             cells.use = Tcells$Tage=="CD4_adult", colors = dittoColors()[1], 
+             legend.show = FALSE, ylab = NULL, xlab = NULL, main = NULL,
+             show.axes.numbers = FALSE)
+
+# How can we use a for loop to generate plots for each of the variables we need?
+# lets set up a for loop together!
+
+for ( x in 1:6 ){
+  
+}
+
+```
+
+## add main plot and legend to plotlist list
+```{r add main umap and legend to list of plots}
+plotlist[[7]] <- main_umap
+plotlist[[8]] <- legend
+```
+
+https://twitter.com/hadleywickham/status/643381054758363136
+
+## final fancy combination!
+
+```{r, combine figure 1A fig.height=6, fig.width=6}
+plots = gridExtra::grid.arrange(
+  grobs = plotlist,
+  layout_matrix = matrix(c(
+    7,7,7,2,
+    7,7,7,6,
+    7,7,7,4,
+    1,5,3,8),
+    ncol = 4))
+```
+
+
+# inspect some biology to set up next plots 1B:D
+```{r res vs age comparison, fig.height=3, fig.width=4}
+dittoDimPlot(Tcells, "Age", reduction.use = 'umap')
+dittoDimPlot(Tcells, "RNA_snn_res.0.2", reduction.use = 'umap')
+```
+
+## set up new meta column
+```{r make age/cluster vector}
+age.clust <- factor(Tcells@meta.data$RNA_snn_res.0.2, 
+                    labels = 
+                      c("adult-cluster",
+                        "UCB-cluster",
+                        "fetal-cluster"))
+#add this to metadata!
+
+```
+
+## plot umap 1B
+```{r, fig.height=2, fig.width=4}
+dittoBarPlot(
+    object = Tcells, var = "age.cluster", group.by = "Sample")
+
+#subset to CD4
+#assign Y label
+#remove legend
+#relabel & rotate X axis labes
+#remove main xlab
+#fix colors
+```
